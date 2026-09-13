@@ -1,19 +1,27 @@
 # Notes API — Session-Auth Flask Backend
 
-## Project Description
-
-A secure Flask REST API for a personal notes-tracking productivity app. Users
-register and log in with a hashed password (Flask-Bcrypt) and a server-side
+A secure Flask REST API for a personal notes-tracking productivity app.
+Users register and log in with a bcrypt-hashed password and a server-side
 session cookie. Once logged in, they can create, read, update, and delete
-their own notes. Every note is scoped to its owner — no user can view, edit,
-or delete another user's notes, and the notes index endpoint is paginated.
+their own notes — every note is scoped to its owner, no user can view or
+modify another user's data, and the notes index endpoint is paginated.
 
 Built to pair with the JWT/Sessions frontend client repo — use the
 **sessions** client, since this API uses cookie-based sessions rather than
 JWTs.
 
-## Tech Stack
+## Table of Contents
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Installation](#installation)
+- [Usage](#usage)
+- [API Endpoints](#api-endpoints)
+- [Security Notes](#security-notes)
+- [Testing](#testing)
+- [Contributing](#contributing)
+- [License](#license)
 
+## Tech Stack
 - Flask 2.2.2 + Flask-RESTful (routing)
 - Flask-SQLAlchemy 3.0.3 + Flask-Migrate 4.0.0 (models + migrations)
 - Flask-Bcrypt 1.0.1 (password hashing)
@@ -22,7 +30,6 @@ JWTs.
 - SQLite (default local database)
 
 ## Project Structure
-
 ```
 server/
 ├── app.py            # Routes / Flask-RESTful resources (auth + notes)
@@ -37,58 +44,69 @@ server/
 
 ## Installation
 
-1. **Clone the repo and enter the server folder:**
-   ```bash
-   cd server
-   ```
+1. Clone the repository and enter the server folder:
+```bash
+   git clone https://github.com/yourusername/notes-api.git
+   cd notes-api/server
+```
 
-2. **Install dependencies with Pipenv:**
-   ```bash
+2. Install dependencies with Pipenv:
+```bash
    pipenv install
    pipenv shell
-   ```
+```
    (If you'd rather use plain `pip` in a virtualenv, install the packages
    listed in `Pipfile` instead.)
 
-3. **Set the Flask app entry point:**
-   ```bash
+3. Set the Flask app entry point:
+```bash
    export FLASK_APP=app.py       # macOS/Linux
    set FLASK_APP=app.py          # Windows (cmd)
-   ```
+```
 
-4. **Create and apply the database migrations:**
-   ```bash
+4. Create and apply the database migrations:
+```bash
    flask db init      # only needed if migrations/ doesn't already exist
    flask db upgrade
-   ```
+```
 
-5. **Seed the database with sample data:**
-   ```bash
+5. Seed the database with sample data:
+```bash
    python seed.py
-   ```
+```
    This creates a demo account (`username: demo`, `password: password123`)
    plus four more random users, each with several notes.
 
-## Running the Server
+## Usage
 
+Start the server:
 ```bash
 flask run --port 5555
 ```
-
 The API will be available at `http://127.0.0.1:5555`.
 
 ### Connecting the frontend
 
 By default the API allows cross-origin requests (with cookies) from
 `http://localhost:4000`. If your frontend client runs on a different port,
-set the `FRONTEND_ORIGIN` environment variable before starting the server:
+set `FRONTEND_ORIGIN` before starting the server:
 
 ```bash
 export FRONTEND_ORIGIN=http://localhost:3000
 flask run --port 5555
 ```
 
-## Environment Variables (optional)
+### Example request
+
+```bash
+curl -c cookies.txt -X POST http://127.0.0.1:5555/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "demo", "password": "password123"}'
+
+curl -b cookies.txt "http://127.0.0.1:5555/notes?page=1&per_page=5"
+```
+
+### Environment Variables (optional)
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -119,7 +137,6 @@ flask run --port 5555
 | `DELETE` | `/notes/<id>` | Delete one of the current user's notes. 404 if not found/owned. |
 
 ### Status codes used
-
 - `200` success (read/update)
 - `201` resource created
 - `204` success, no content (logout, delete)
@@ -129,7 +146,6 @@ flask run --port 5555
 - `422` validation error (e.g. missing field, duplicate username, password too short)
 
 ## Security Notes
-
 - Passwords are never stored in plain text — `User.password_hash` is a
   write-only property that hashes on assignment via Flask-Bcrypt, and the
   raw hash column is never included in `to_dict()`.
@@ -140,9 +156,18 @@ flask run --port 5555
   which note IDs exist.
 
 ## Testing
-
 Manual testing was done with `curl` and the sessions frontend client,
 covering: signup/login/logout, `check_session`, full note CRUD, pagination,
 cross-user access attempts (expect `404`), duplicate signup (`422`), and
 invalid login (`401`). A `pytest` suite can be added under a `tests/`
 directory if desired (not required for this lab).
+
+## Contributing
+1. Fork the repository.
+2. Create a new branch: `git checkout -b feature-name`.
+3. Make your changes.
+4. Push your branch: `git push origin feature-name`.
+5. Open a pull request.
+
+## License
+This project was built as a course lab and is provided for educational use.
