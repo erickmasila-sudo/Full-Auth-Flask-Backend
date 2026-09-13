@@ -8,7 +8,7 @@ Auth endpoints (session-based, cookie stores user_id):
     GET    /check_session    return the current logged-in user, if any
 
 Resource endpoints (all require an active session):
-    GET    /notes             list the current user's notes
+    GET    /notes             paginated list of the current user's notes
     POST   /notes              create a note owned by the current user
     GET    /notes/<id>        fetch one of the current user's notes
     PATCH  /notes/<id>        update one of the current user's notes
@@ -96,8 +96,31 @@ class CheckSession(Resource):
 class Notes(Resource):
     @login_required
     def get(self):
-        notes = Note.query.filter_by(user_id=session["user_id"]).order_by(Note.created_at.desc()).all()
-        return [note.to_dict() for note in notes], 200
+        """Paginated list of the current user's notes.
+
+        Query params: page (default 1), per_page (default 10, max 100).
+        """
+        try:
+            page = max(int(request.args.get("page", 1)), 1)
+            per_page = min(max(int(request.args.get("per_page", 10)), 1), 100)
+        except ValueError:
+            return {"error": "page and per_page must be integers"}, 400
+
+        query = (
+            Note.query.filter_by(user_id=session["user_id"])
+            .order_by(Note.created_at.desc())
+        )
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+        return {
+            "notes": [note.to_dict() for note in pagination.items],
+            "page": pagination.page,
+            "per_page": pagination.per_page,
+            "total": pagination.total,
+            "total_pages": pagination.pages,
+            "has_next": pagination.has_next,
+            "has_prev": pagination.has_prev,
+        }, 200
 
     @login_required
     def post(self):
