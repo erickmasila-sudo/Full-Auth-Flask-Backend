@@ -14,9 +14,10 @@ Resource endpoints (all require an active session):
     PATCH  /notes/<id>        update one of the current user's notes
     DELETE /notes/<id>        delete one of the current user's notes
 """
+import os
 from functools import wraps
 
-from flask import request, session
+from flask import request, session, make_response
 from flask_restful import Resource
 from marshmallow import ValidationError
 from sqlalchemy.exc import IntegrityError
@@ -24,6 +25,33 @@ from sqlalchemy.exc import IntegrityError
 from config import app, db, api
 from models import User, Note
 from schemas import SignupSchema, LoginSchema, NoteCreateSchema, NoteUpdateSchema
+
+# ---------------------------------------------------------------------------
+# CORS
+# ---------------------------------------------------------------------------
+# The React frontend runs on a different port than this API, so browsers
+# treat it as a separate origin. We allow that origin explicitly (rather
+# than "*") because credentials (the session cookie) cannot be sent to a
+# wildcard origin.
+FRONTEND_ORIGIN = os.environ.get("FRONTEND_ORIGIN", "http://localhost:4000")
+
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = FRONTEND_ORIGIN
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PATCH, DELETE, OPTIONS"
+    return response
+
+
+@app.route("/<path:_path>", methods=["OPTIONS"])
+@app.route("/", methods=["OPTIONS"], defaults={"_path": ""})
+def cors_preflight(_path):
+    # Browsers send an OPTIONS preflight before PATCH/DELETE/POST-with-JSON
+    # cross-origin requests. Respond 200 with the CORS headers (added above)
+    # and no body.
+    return make_response("", 200)
 
 
 def login_required(fn):
